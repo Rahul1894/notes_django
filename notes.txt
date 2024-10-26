@@ -1,0 +1,142 @@
+#to start project
+django-admin startproject smartnotes . 
+
+this will create a project named smartnotes inside directory (.)
+
+#to make an app
+django-admin startapp home 
+
+then add this app home in settings.py file of smartnotes
+
+def home(request):  #every time it will receice an request, it will return hello world 
+    return HttpResponse('Hello world!')
+
+#but how do we know that home function will receice requests that's why we will import this file in urls.py in smartnotes  
+
+urlpatterns = [
+    path('admin/', admin.site.urls),
+    path('home',views.home),   # when a person goes to home endpoint , they are making a request to that path 
+    #django will go to urls.py file to see if it's ready to receice a request at this path , since it is it will go to views.py file then def home()
+]
+
+
+django uses a common pattern MVT Framework : Model View Template 
+
+# def home(request):
+#     return render(request,'home/welcome.html',{})  # empty brackets are used to pass down informtion to that html file 
+
+
+django has the entire authentication system ready to go, the only thing we need to do is to make sure our database is configured 
+/localhost/admin endpoint
+
+the way django knows if the database is behind the system changes is through a  couple of files called migrations 
+migrations explain what kind of changes a database needs to perform such as create a new table, establish a new relationship 
+
+django already has the migrations for the authentication system ready so what we need to do is apply them to the database and we do this by using the command migrate that will actually change the database  
+python manage.py migrate   
+
+now we will create a super user/person/administrator that will have all the powers in this project of django
+python manage.py createsuperuser
+
+ORM - Object relational mapping
+used to make custom structure model 
+
+the process of using a class, defining a model, creating a migration, and applying the migration and changes to database is the ORM's job. 
+
+classes -> MakeMigrations -> migrate -> database
+
+classes name is database/table name 
+attributes inside classes name are columns name
+
+# Create your models here.
+class Notes(models.Model):
+    title=models.CharField(max_length=200)
+    notes=models.TextField()
+    created=models.DateTimeField(auto_now_add=True)
+    
+then
+python manage.py makemigrations
+then 
+python manage.py migrate
+
+now we also need to register our model to see in our admin interface 
+go to admin.py in notes
+
+from django.contrib import admin
+from . import models
+# Register your models here.
+class NotesAdmin(admin.ModelAdmin):
+    list_display=('title',)    # if we just write 'pass' here, it will not show title in list and will be shown as 'notes object' 
+
+admin.site.register(models.Notes,NotesAdmin)
+
+to access django shell 
+python manage.py shell
+
+$ python manage.py shell
+Python 3.8.20 (default, Oct  3 2024, 15:19:54) [MSC v.1929 64 bit (AMD64)] on win32
+Type "help", "copyright", "credits" or "license" for more information.
+(InteractiveConsole)
+>>> from notes.models import Notes
+>>> mynote=Notes.objects.get(pk='1') 
+>>> mynote.title
+'My first note'
+>>> mynote.notes
+'Hello world'
+>>> Notes.objects.all()
+<QuerySet [<Notes: Notes object (1)>]>
+
+>>> new_note=Notes.objects.create(title="a second note", notes='this note is created from django shell') 
+>>> Notes.objects.all()
+<QuerySet [<Notes: Notes object (1)>, <Notes: Notes object (2)>]>
+
+Class based views help you create powerful endpoints without too much effort
+
+To provide authentication in class based views, we are going to use mixin class 
+Mixins are helper classes that can be used along with other classes to provide additional features 
+
+Create static folder to store all css and javascript files and tell django that the files are there 
+go to settings.py in smartnotes and go to static_url and add :
+ STATICFILES_DIRS=[
+    BASE_DIR/'static',
+]
+
+
+Minimum functionalities which should be supported are:
+model + CRUD 
+CRUD = create, retrieve, update, delete
+
+
+whenever we submit the form, we need to use csrf_token otherwise it will give forbidden error 
+csrf = cross site request forgery 
+what happens here is that everytime a browser requests a webpage that has a form, django will send a unique token to that browser.
+this token will be securely kept and no other website can access it. when the user sends back a form, it will also send back a token allowing djnago to know that this request is coming from a legitimate user
+however, if some third party have access to credentials and they try to make a request from another browser but they won't have token so django won't process request 
+
+The last line in your code defines a relationship between the `Notes` model and Django’s built-in `User` model. Let’s break it down step by step:
+
+```python
+user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="notes")
+```
+
+1. **user**: This is the name of the field being defined within the `Notes` model. It represents a reference to a `User` instance, meaning each note is associated with a specific user.
+
+2. **models.ForeignKey(User, …)**: 
+   - `ForeignKey` is a Django model field used to define a many-to-one relationship. 
+   - Here, it connects the `Notes` model to the `User` model from `django.contrib.auth.models`.
+   - This means multiple notes can be associated with a single user, but each note is linked to only one user.
+
+3. **User**: 
+   - This is Django’s default user model. It holds user-specific data, like username, email, and password.
+   - By specifying `User` as the first argument in `ForeignKey`, you indicate that the `user` field in `Notes` refers to an instance of `User`.
+
+4. **on_delete=models.CASCADE**:
+   - `on_delete` is a parameter specifying what should happen to notes if the associated user is deleted.
+   - `models.CASCADE` instructs Django to delete all notes linked to that user when the user is removed. If a user is deleted, all their notes are automatically deleted as well.
+
+5. **related_name="notes"**:
+   - `related_name` specifies the name Django will use for the reverse relation from `User` back to `Notes`.
+   - By setting `related_name="notes"`, you can access all notes associated with a user using `user.notes` (where `user` is an instance of `User`).
+   - For example, if a user has multiple notes, you could retrieve them with `user_instance.notes.all()`.
+
+Overall, this line establishes a one-to-many relationship where each note belongs to a single user, and each user can have multiple notes.
